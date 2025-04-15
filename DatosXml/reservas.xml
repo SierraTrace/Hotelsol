@@ -1,0 +1,16 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<Reservas>
+	<Reserva>
+		<IdReserva>1</IdReserva>
+		<ClienteNombre>María</ClienteNombre>
+		<ClienteApellido>Pérez</ClienteApellido>
+		<HabitacionNumero>101</HabitacionNumero>
+		<FechaLlegada>2025-04-01</FechaLlegada>
+		<FechaSalida>2025-04-05</FechaSalida>
+		<TipoAlojamiento>Standard</TipoAlojamiento>
+		<Temporada>Alta</Temporada>
+		<PrecioEstancia>300.00</PrecioEstancia>
+		<PrecioAlojamiento>150.00</PrecioAlojamiento>
+		<PrecioTotal>450.00</PrecioTotal>
+	</Reserva>
+</Reservas>
