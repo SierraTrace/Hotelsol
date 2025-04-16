@@ -11,7 +11,7 @@ namespace HotelSol.hotelsol.modelo
 
         // FK y navegación
         public int HabitacionId { get; set; }
-        public required Habitacion Habitacion { get; set; }
+        public Habitacion? Habitacion { get; set; }
 
         public required Temporada Temporada { get; set; }
 

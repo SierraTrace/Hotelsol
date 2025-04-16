@@ -1,4 +1,5 @@
 ﻿using HotelSol.hotelsol.modelo;
+using HotelSol.hotelsol.negocio.controlador;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Linq;
@@ -9,11 +10,13 @@ namespace HotelSol.hotelsol.vista
     public partial class HabitacionesForm : Form
     {
         private readonly HotelSolDbContext _dbContext;
+        private readonly HabitacionControl habitacionControl;
 
         public HabitacionesForm(HotelSolDbContext dbContext)
         {
             InitializeComponent();
             _dbContext = dbContext ?? throw new ArgumentNullException(nameof(dbContext));
+            habitacionControl = new HabitacionControl(_dbContext);
 
             this.btnAgregar.Click += new EventHandler(this.btnAgregar_Click);
             this.btnModificar.Click += new EventHandler(this.btnModificar_Click);
@@ -65,33 +68,16 @@ namespace HotelSol.hotelsol.vista
             {
                 Numero = numero,
                 TipoHabitacionId = tipoSeleccionado.Id,
-                Estado = estadoSeleccionado
+                Estado = estadoSeleccionado,
+                PreciosPorTemporada = new List<PrecioNoche>
+                {
+                    new PrecioNoche { HabitacionId = numero, Temporada = Temporada.Alta, Precio = precioAlta },
+                    new PrecioNoche { HabitacionId = numero, Temporada = Temporada.Media, Precio = precioMedia },
+                    new PrecioNoche { HabitacionId = numero, Temporada = Temporada.Baja, Precio = precioBaja }
+                }
             };
 
-            habitacion.PreciosPorTemporada.Add(new PrecioNoche
-            {
-                Habitacion = habitacion,
-                HabitacionId = habitacion.Numero,
-                Temporada = Temporada.Alta,
-                Precio = precioAlta
-            });
-            habitacion.PreciosPorTemporada.Add(new PrecioNoche
-            {
-                Habitacion = habitacion,
-                HabitacionId = habitacion.Numero,
-                Temporada = Temporada.Media,
-                Precio = precioMedia
-            });
-            habitacion.PreciosPorTemporada.Add(new PrecioNoche
-            {
-                Habitacion = habitacion,
-                HabitacionId = habitacion.Numero,
-                Temporada = Temporada.Baja,
-                Precio = precioBaja
-            });
-
-            _dbContext.Habitaciones.Add(habitacion);
-            _dbContext.SaveChanges();
+            habitacionControl.AgregarHabitacion(habitacion);
 
             MessageBox.Show("Habitación agregada correctamente.");
             LimpiarCampos();
@@ -124,39 +110,34 @@ namespace HotelSol.hotelsol.vista
                 return;
             }
 
-            var habitacion = _dbContext.Habitaciones
-                .Include(h => h.PreciosPorTemporada)
-                .FirstOrDefault(h => h.Numero == numero);
+            decimal precioAlta = numPrecioAlta.Value;
+            decimal precioMedia = numPrecioMedia.Value;
+            decimal precioBaja = numPrecioBaja.Value;
 
-            if (habitacion == null)
+            if (precioAlta <= 0 || precioMedia <= 0 || precioBaja <= 0)
             {
-                MessageBox.Show("Habitación no encontrada.");
+                MessageBox.Show("Precios inválidos.");
                 return;
             }
 
-            habitacion.TipoHabitacionId = tipoSeleccionado.Id;
-            habitacion.Estado = estadoSeleccionado;
+            bool modificado = habitacionControl.ModificarHabitacion(
+                numero,
+                tipoSeleccionado.Id,
+                estadoSeleccionado,
+                precioAlta,
+                precioMedia,
+                precioBaja
+            );
 
-            foreach (var precio in habitacion.PreciosPorTemporada)
+            if (modificado)
             {
-                switch (precio.Temporada)
-                {
-                    case Temporada.Alta:
-                        precio.Precio = numPrecioAlta.Value;
-                        break;
-                    case Temporada.Media:
-                        precio.Precio = numPrecioMedia.Value;
-                        break;
-                    case Temporada.Baja:
-                        precio.Precio = numPrecioBaja.Value;
-                        break;
-                }
+                MessageBox.Show("Habitación modificada correctamente.");
+                CargarHabitaciones();
+                LimpiarCampos();
+            } else
+            {
+                MessageBox.Show("Habitación no encontrada.");
             }
-
-            _dbContext.SaveChanges();
-            MessageBox.Show("Habitación modificada correctamente.");
-            CargarHabitaciones();
-            LimpiarCampos();
         }
 
         private void LimpiarCampos()
@@ -171,23 +152,8 @@ namespace HotelSol.hotelsol.vista
 
         private void CargarHabitaciones()
         {
-            var habitaciones = _dbContext.Habitaciones
-                .Include(h => h.TipoHabitacion)
-                .Include(h => h.PreciosPorTemporada)
-                .ToList()
-                .Select(h => new
-                {
-                    h.Numero,
-                    Tipo = h.TipoHabitacion.Nombre,
-                    Estado = h.Estado.ToString(),
-                    PrecioAlta = h.PreciosPorTemporada.FirstOrDefault(p => p.Temporada == Temporada.Alta)?.Precio ?? 0,
-                    PrecioMedia = h.PreciosPorTemporada.FirstOrDefault(p => p.Temporada == Temporada.Media)?.Precio ?? 0,
-                    PrecioBaja = h.PreciosPorTemporada.FirstOrDefault(p => p.Temporada == Temporada.Baja)?.Precio ?? 0
-                })
-                .ToList();
-
             dataGridHabitaciones.DataSource = null;
-            dataGridHabitaciones.DataSource = habitaciones;
+            dataGridHabitaciones.DataSource = habitacionControl.ObtenerHabitacionesParaTabla();
         }
 
         private void dataGridHabitaciones_CellContentClick(object sender, DataGridViewCellEventArgs e)

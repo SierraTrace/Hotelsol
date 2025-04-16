@@ -1,4 +1,5 @@
 ﻿using HotelSol.hotelsol.modelo;
+using HotelSol.hotelsol.negocio.controlador;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Linq;
@@ -9,13 +10,14 @@ namespace HotelSol.hotelsol.vista
     public partial class LoginForm : Form
     {
         private readonly HotelSolDbContext _dbContext;
+        private readonly LoginControl loginControl;
 
         public LoginForm(HotelSolDbContext dbContext)
         {
             _dbContext = dbContext ?? throw new ArgumentNullException(nameof(dbContext));
+            loginControl = new LoginControl(dbContext);
             InitializeComponent();
         }
-
 
         private void btnLogin_Click(object sender, EventArgs e)
         {
@@ -30,8 +32,7 @@ namespace HotelSol.hotelsol.vista
 
             try
             {
-                var empleado = _dbContext.Empleados
-                    .FirstOrDefault(e => e.UserName == usuario && e.Contraseña == contraseña);
+                var empleado = loginControl.VerificarCredenciales(usuario, contraseña);
 
                 if (empleado != null)
                 {

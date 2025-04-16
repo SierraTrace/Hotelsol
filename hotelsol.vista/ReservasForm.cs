@@ -1,4 +1,5 @@
 ﻿using HotelSol.hotelsol.modelo;
+using HotelSol.hotelsol.negocio.controlador;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Linq;
@@ -9,11 +10,16 @@ namespace HotelSol.hotelsol.vista
     public partial class ReservasForm : Form
     {
         private readonly HotelSolDbContext _dbContext;
+        private readonly ReservaControl reservaControl;
+        private readonly ClienteControl clienteControl;
 
         public ReservasForm(HotelSolDbContext dbContext)
         {
-            InitializeComponent();
             _dbContext = dbContext;
+            reservaControl = new ReservaControl(dbContext);
+            clienteControl = new ClienteControl(dbContext);
+            InitializeComponent();
+
             this.Load += (s, e) => VerificarNoPresentadosDeDiasAnteriores();
 
             dataGridReservas.AutoGenerateColumns = true;
@@ -52,16 +58,7 @@ namespace HotelSol.hotelsol.vista
             if (!ValidarCampos(out Cliente cliente, out Habitacion habitacion, out DateTime llegada, out DateTime salida, out TipoAlojamiento tipo))
                 return;
 
-            bool conflicto = _dbContext.Reservas.Any(r =>
-                r.HabitacionId == habitacion.Numero &&
-                (
-                    (llegada >= r.FechaLlegada && llegada < r.FechaSalida) ||
-                    (salida > r.FechaLlegada && salida <= r.FechaSalida) ||
-                    (llegada <= r.FechaLlegada && salida >= r.FechaSalida)
-                )
-            );
-
-            if (conflicto)
+            if (reservaControl.ExisteConflictoReserva(habitacion, llegada, salida))
             {
                 MessageBox.Show("La habitación ya está reservada para una o más fechas seleccionadas.");
                 return;
@@ -75,21 +72,17 @@ namespace HotelSol.hotelsol.vista
                 FechaSalida = salida,
                 TipoAlojamiento = tipo,
                 Temporada = TemporadaDia.CalcularTemporadaPorDia(llegada, _dbContext),
-                Estado = EstadoReserva.Pendiente
+                Estado = EstadoReserva.Pendiente,
+                PreciosNoche = _dbContext.PreciosNoche
+                    .Where(p => p.HabitacionId == habitacion.Numero)
+                    .ToList(),
+                PreciosAlojamiento = _dbContext.PrecioAlojamiento
+                     .Where(p => p.TipoHabitacion.Id == habitacion.TipoHabitacion.Id)
+                     .ToList()
             };
 
-            reserva.PreciosNoche = _dbContext.PreciosNoche
-                .Where(p => p.HabitacionId == habitacion.Numero)
-                .ToList();
-
-            reserva.PreciosAlojamiento = _dbContext.PrecioAlojamiento
-                .Where(p => p.TipoHabitacion.Id == habitacion.TipoHabitacion.Id)
-                .ToList();
-
             reserva.GuardarPrecios(_dbContext);
-
-            _dbContext.Reservas.Add(reserva);
-            _dbContext.SaveChanges();
+            reservaControl.AgregarReserva(reserva);
 
             MessageBox.Show("Reserva agregada correctamente.");
             CargarReservas();
@@ -110,10 +103,7 @@ namespace HotelSol.hotelsol.vista
                 return;
             }
 
-            var reserva = _dbContext.Reservas
-                .Include(r => r.Cliente)
-                .Include(r => r.Habitacion)
-                .FirstOrDefault(r => r.IdReserva == idReserva);
+            var reserva = reservaControl.ObtenerReservaPorId(idReserva);
 
             if (reserva == null)
             {
@@ -124,17 +114,7 @@ namespace HotelSol.hotelsol.vista
             if (!ValidarCampos(out Cliente cliente, out Habitacion habitacion, out DateTime llegada, out DateTime salida, out TipoAlojamiento tipo))
                 return;
 
-            bool conflicto = _dbContext.Reservas.Any(r =>
-                r.IdReserva != reserva.IdReserva &&
-                r.HabitacionId == habitacion.Numero &&
-                (
-                    (llegada >= r.FechaLlegada && llegada < r.FechaSalida) ||
-                    (salida > r.FechaLlegada && salida <= r.FechaSalida) ||
-                    (llegada <= r.FechaLlegada && salida >= r.FechaSalida)
-                )
-            );
-
-            if (conflicto)
+            if (reservaControl.ExisteConflictoReservaModificada(reserva.IdReserva, habitacion, llegada, salida))
             {
                 MessageBox.Show("La habitación ya está reservada para una o más fechas seleccionadas.");
                 return;
@@ -146,6 +126,7 @@ namespace HotelSol.hotelsol.vista
             reserva.FechaSalida = salida;
             reserva.TipoAlojamiento = tipo;
             reserva.Temporada = TemporadaDia.CalcularTemporadaPorDia(llegada, _dbContext);
+
             if (reserva.Estado == EstadoReserva.No_presentado)
             {
                 reserva.Estado = EstadoReserva.Pendiente;
@@ -160,7 +141,8 @@ namespace HotelSol.hotelsol.vista
                 .ToList();
 
             reserva.GuardarPrecios(_dbContext);
-            _dbContext.SaveChanges();
+
+            reservaControl.ModificarReserva(reserva);
 
             MessageBox.Show("Reserva modificada correctamente.");
             CargarReservas();
@@ -171,7 +153,7 @@ namespace HotelSol.hotelsol.vista
         {
             try
             {
-                var temporada = TemporadaDia.CalcularTemporadaPorDia(dateFechaLlegada.Value, _dbContext);
+                var temporada = reservaControl.CalcularTemporada(dateFechaLlegada.Value);
                 lblTemporadaDetectada.Text = $"Temporada estimada: {temporada}";
             }
             catch
@@ -182,24 +164,7 @@ namespace HotelSol.hotelsol.vista
 
         private void CargarReservas()
         {
-            var reservas = _dbContext.Reservas
-                .Include(r => r.Cliente)
-                .Include(r => r.Habitacion)
-                .OrderByDescending(r => r.IdReserva)
-                .ToList()
-                .Select(r => new
-                {
-                    IdReserva = r.IdReserva,
-                    Cliente = r.Cliente.DniYNombre,
-                    Habitacion = r.Habitacion.Numero,
-                    FechaLlegada = r.FechaLlegada.ToString("dd/MM/yyyy"),
-                    FechaSalida = r.FechaSalida.ToString("dd/MM/yyyy"),
-                    TipoAlojamiento = r.TipoAlojamiento.ToString(),
-                    Temporada = r.Temporada.ToString(),
-                    Estado = r.Estado.ToString(),
-                    Total = r.PrecioReservaGuardado
-                })
-                .ToList();
+            var reservas = reservaControl.ObtenerReservasParaTabla();
 
             dataGridReservas.AutoGenerateColumns = true;
             dataGridReservas.DataSource = null;
@@ -227,10 +192,7 @@ namespace HotelSol.hotelsol.vista
             // Intentamos hacer el cast
             if (int.TryParse(cellValue.ToString(), out int id))
             {
-                var reserva = _dbContext.Reservas
-                    .Include(r => r.Cliente)
-                    .Include(r => r.Habitacion)
-                    .FirstOrDefault(r => r.IdReserva == id);
+                var reserva = reservaControl.ObtenerReservaPorId(id);
 
                 if (reserva != null)
                 {
@@ -246,7 +208,7 @@ namespace HotelSol.hotelsol.vista
         private void btnBuscarCliente_Click(object sender, EventArgs e)
         {
             string dni = txtBuscarDni.Text.Trim();
-            var cliente = _dbContext.Clientes.FirstOrDefault(c => c.Dni == dni);
+            var cliente = clienteControl.BuscarPorDni(dni);
 
             if (cliente != null)
                 cmbCliente.SelectedItem = cliente;
@@ -277,7 +239,7 @@ namespace HotelSol.hotelsol.vista
                 return false;
             }
 
-            if (habitacionSeleccionada.Estado == EstadoHabitacion.Ocupada || habitacionSeleccionada.Estado == EstadoHabitacion.Ocupada)
+            if (habitacionSeleccionada.Estado == EstadoHabitacion.Ocupada)
             {
                 MessageBox.Show("La habitación seleccionada no está disponible.");
                 return false;
@@ -380,87 +342,41 @@ namespace HotelSol.hotelsol.vista
 
         private void btnCheckIn_Click(object sender, EventArgs e)
         {
-            if (dataGridReservas.CurrentRow == null)
+            if (dataGridReservas.CurrentRow == null ||
+                dataGridReservas.CurrentRow.Cells["IdReserva"].Value is not int idReserva)
             {
                 MessageBox.Show("Seleccione una reserva para hacer check-in.");
                 return;
             }
 
-            if (dataGridReservas.CurrentRow.Cells["IdReserva"].Value is not int idReserva)
+            string? resultado = reservaControl.RealizarCheckIn(idReserva);
+
+            if (resultado == null)
             {
-                MessageBox.Show("ID de reserva no válido.");
+                MessageBox.Show("Error inesperado durante el check-in.");
                 return;
             }
 
-            var reserva = _dbContext.Reservas.FirstOrDefault(r => r.IdReserva == idReserva);
-
-            if (reserva == null)
-            {
-                MessageBox.Show("Reserva no encontrada.");
-                return;
-            }
-
-            if (reserva.Estado != EstadoReserva.Pendiente)
-            {
-                MessageBox.Show("La reserva no está en estado pendiente.");
-                return;
-            }
-
-            var hoy = DateTime.Today;
-
-            if (reserva.FechaLlegada != hoy)
-            {
-                MessageBox.Show("Solo puede hacer check-in el día de llegada.");
-                return;
-            }
-
-            reserva.Estado = EstadoReserva.Confirmada;
-            _dbContext.SaveChanges();
-
-            MessageBox.Show($"Check-in realizado correctamente.\n\nSe confirma la entrada de {reserva.Cliente.Nombre} {reserva.Cliente.Apellido}.");
+            MessageBox.Show(resultado);
             CargarReservas();
             LimpiarCampos();
         }
+
         private void dataGridReservas_ColumnHeaderMouseClick(object sender, DataGridViewCellMouseEventArgs e)
         {
             string columna = dataGridReservas.Columns[e.ColumnIndex].DataPropertyName;
 
-            // Alternar entre orden ascendente y descendente
             bool ascendente = true;
+
             if (dataGridReservas.Tag is Tuple<string, bool> ultimaOrden && ultimaOrden.Item1 == columna)
             {
                 ascendente = !ultimaOrden.Item2;
             }
 
-            // Excluir reservas canceladas y pagadas
-            var reservas = _dbContext.Reservas
-                .Include(r => r.Cliente)
-                .Include(r => r.Habitacion)
-                .Where(r => r.Estado != EstadoReserva.Cancelada && r.Estado != EstadoReserva.Pagada)
-                .ToList();
-
-            var lista = reservas.Select(r => new
-            {
-                r.IdReserva,
-                Cliente = r.Cliente.DniYNombre,
-                Habitacion = r.Habitacion.Numero,
-                FechaLlegada = r.FechaLlegada.ToString("dd/MM/yyyy"),
-                FechaSalida = r.FechaSalida.ToString("dd/MM/yyyy"),
-                TipoAlojamiento = r.TipoAlojamiento.ToString(),
-                Temporada = r.Temporada.ToString(),
-                Estado = r.Estado.ToString(),
-                Total = r.PrecioReservaGuardado
-            });
-
-            var ordenada = ascendente
-                ? lista.OrderBy(x => x.GetType().GetProperty(columna)?.GetValue(x))
-                : lista.OrderByDescending(x => x.GetType().GetProperty(columna)?.GetValue(x));
-
-            dataGridReservas.DataSource = ordenada.ToList();
-
-            // Guardar el estado de orden actual
+            dataGridReservas.DataSource = reservaControl.ObtenerReservasOrdenadasPorColumna(columna, ascendente);
             dataGridReservas.Tag = Tuple.Create(columna, ascendente);
         }
+
         private void btnCheckOut_Click(object sender, EventArgs e)
         {
             if (dataGridReservas.CurrentRow == null)
@@ -475,19 +391,11 @@ namespace HotelSol.hotelsol.vista
                 return;
             }
 
-            var reserva = _dbContext.Reservas
-                .Include(r => r.Cliente)
-                .FirstOrDefault(r => r.IdReserva == idReserva);
-
+            var reserva = reservaControl.ObtenerReservaPorId(idReserva);
+              
             if (reserva == null)
             {
                 MessageBox.Show("Reserva no encontrada.");
-                return;
-            }
-
-            if (reserva.Estado != EstadoReserva.Confirmada)
-            {
-                MessageBox.Show("Solo se puede hacer check-out si la reserva ha sido confirmada anteriormente.");
                 return;
             }
 
@@ -501,46 +409,39 @@ namespace HotelSol.hotelsol.vista
 
             if (confirmacion == DialogResult.Yes)
             {
-                reserva.Estado = EstadoReserva.Pagada;
-                _dbContext.SaveChanges();
-
-                MessageBox.Show("Check-out realizado correctamente.");
-                CargarReservas();
-                LimpiarCampos();
+                if (reservaControl.RealizarCheckOut(idReserva, out string mensaje))
+                {
+                    MessageBox.Show(mensaje);
+                    CargarReservas();
+                    LimpiarCampos();
+                } else
+                {
+                    MessageBox.Show(mensaje, "Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                }
+           
             }
         }
 
         private void VerificarNoPresentadosDeDiasAnteriores()
         {
-            var hoy = DateTime.Today;
-            var ayer = hoy.AddDays(-1);
-
-            var reservasAtrasadas = _dbContext.Reservas
-                .Include(r => r.Cliente)
-                .Where(r => r.FechaLlegada.Date == ayer && r.Estado == EstadoReserva.Pendiente)
-                .ToList();
-
+          
+            var reservasAtrasadas = reservaControl.ObtenerNoPresentadosDelDiaAnterior();
+           
             foreach (var reserva in reservasAtrasadas)
             {
-                string mensaje = $"⚠ El cliente {reserva.Cliente.DniYNombre} no se presentó ayer ({ayer:dd/MM/yyyy}).\n" +
+                string mensaje = $"El cliente {reserva.Cliente.DniYNombre} no se presentó ayer ({reserva.FechaLlegada:dd/MM/yyyy}).\n" +
                                  "¿Deseas cancelar la reserva?\n\n" +
                                  "S = Cancelar\nN = Marcar como 'No presentado'";
 
                 var resultado = MessageBox.Show(mensaje, "Cliente no presentado", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
 
-                if (resultado == DialogResult.Yes)
-                {
-                    reserva.Estado = EstadoReserva.Cancelada;
-                }
-                else
-                {
-                    reserva.Estado = EstadoReserva.No_presentado;
-                }
+                var nuevoEstado = (resultado == DialogResult.Yes) ? EstadoReserva.Cancelada : EstadoReserva.No_presentado;
+                reservaControl.ActualizarEstadoReserva(reserva, nuevoEstado);
+
             }
 
             if (reservasAtrasadas.Any())
             {
-                _dbContext.SaveChanges();
                 MessageBox.Show("Reservas actualizadas según respuesta del operador.", "Actualización completada");
                 CargarReservas();
             }

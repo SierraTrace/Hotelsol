@@ -9,12 +9,14 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using Microsoft.EntityFrameworkCore;
+using HotelSol.hotelsol.negocio.controlador;
 
 namespace HotelSol.hotelsol.vista
 {
     public partial class HistorialForm : Form
     {
         private readonly HotelSolDbContext _dbContext;
+        private readonly ReservaControl reservaControl;
 
         public HistorialForm(HotelSolDbContext dbContext, Cliente cliente)
         {
@@ -26,22 +28,8 @@ namespace HotelSol.hotelsol.vista
 
         private void CargarHistorial(Cliente cliente)
         {
-            var reservas = _dbContext.Reservas
-                .Include(r => r.Habitacion)
-                .Where(r => r.ClienteId == cliente.IdCliente)
-                .Select(r => new
-                {
-                    r.IdReserva,
-                    Habitacion = r.Habitacion.Numero,
-                    r.FechaLlegada,
-                    r.FechaSalida,
-                    r.Estado,
-                    r.TipoAlojamiento,
-                    r.PrecioReservaGuardado
-                })
-                .ToList();
-
-            dataGridHistorial.DataSource = reservas;
+            dataGridHistorial.DataSource = null;
+            dataGridHistorial.DataSource = reservaControl.ObtenerHistorialReservasPorCliente(cliente.IdCliente);
         }
     }
 }

@@ -1,4 +1,5 @@
 ﻿using HotelSol.hotelsol.modelo;
+using HotelSol.hotelsol.negocio.controlador;
 using System;
 using System.Linq;
 using System.Windows.Forms;
@@ -8,13 +9,14 @@ namespace HotelSol.hotelsol.vista
     public partial class EmpleadosForm : Form
     {
         private readonly HotelSolDbContext _dbContext;
+        private readonly EmpleadoControl empleadoControl;
         private int? empleadoSeleccionadoId = null;
 
         public EmpleadosForm(HotelSolDbContext dbContext)
         {
             InitializeComponent();
             _dbContext = dbContext ?? throw new ArgumentNullException(nameof(dbContext));
-
+            empleadoControl = new EmpleadoControl(dbContext);
 
             this.btnAgregar.Click += new EventHandler(this.btnAgregar_Click);
 
@@ -48,9 +50,7 @@ namespace HotelSol.hotelsol.vista
                 return;
             }
 
-            // Validar que no se repita el UserName
-            bool userNameExiste = _dbContext.Empleados.Any(e => e.UserName == userName);
-            if (userNameExiste)
+            if (empleadoControl.ExisteUserName(userName))
             {
                 MessageBox.Show("Ya existe un empleado con ese UserName.", "Error");
                 return;
@@ -65,8 +65,7 @@ namespace HotelSol.hotelsol.vista
                 Categoria = categoriaSeleccionada
             };
 
-            _dbContext.Empleados.Add(nuevoEmpleado);
-            _dbContext.SaveChanges();
+            empleadoControl.Agregar(nuevoEmpleado);
 
             MessageBox.Show("Empleado agregado correctamente", "Éxito");
 
@@ -85,19 +84,8 @@ namespace HotelSol.hotelsol.vista
 
         private void CargarEmpleados()
         {
-            var empleados = _dbContext.Empleados
-                .Select(e => new
-                {
-                    e.IdEmpleado,
-                    e.Nombre,
-                    e.Apellido,
-                    e.UserName,
-                    Categoria = e.Categoria.ToString()
-                })
-                .ToList();
-
             dataGridViewEmpleados.DataSource = null;
-            dataGridViewEmpleados.DataSource = empleados;
+            dataGridViewEmpleados.DataSource = empleadoControl.ObtenerTodosParaTabla();
         }
 
         private void panel1_Paint(object sender, PaintEventArgs e)

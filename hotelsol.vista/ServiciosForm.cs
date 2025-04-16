@@ -5,18 +5,22 @@ using Microsoft.EntityFrameworkCore;
 using System;
 using System.Linq;
 using System.Windows.Forms;
+using HotelSol.hotelsol.negocio.controlador;
 
 namespace HotelSol.hotelsol.vista
 {
     public partial class ServiciosForm : Form
     {
         private readonly HotelSolDbContext _dbContext;
+        private readonly ServicioControl servicioControl;
         private readonly Cliente? _clienteActual;
 
         public ServiciosForm(HotelSolDbContext dbContext)
         {
-            InitializeComponent();
             _dbContext = dbContext;
+            servicioControl = new ServicioControl(dbContext);
+            InitializeComponent();
+            
 
             btnAgregar.Click += btnAgregar_Click;
             btnModificar.Click += btnModificar_Click;
@@ -53,27 +57,15 @@ namespace HotelSol.hotelsol.vista
         {
             var clientes = _dbContext.Clientes.ToList();
 
-            cmbClientes.DataSource = clientes;
+            cmbClientes.DataSource = servicioControl.ObtenerClientes();
             cmbClientes.DisplayMember = "DniYNombre"; 
             cmbClientes.ValueMember = "IdCliente";
         }
 
         private void CargarServicios()
         {
-            var servicios = _dbContext.Servicios
-                .Include(s => s.Cliente)
-                .ToList()
-                .Select(s => new
-                {
-                    s.IdServicio,
-                    Cliente = s.Cliente.DniYNombre,
-                    s.Concepto,
-                    s.Precio
-                })
-                .ToList();
-
             dataGridServicios.DataSource = null;
-            dataGridServicios.DataSource = servicios;
+            dataGridServicios.DataSource = servicioControl.ObtenerServiciosParaTabla();
         }
 
         private void btnAgregar_Click(object sender, EventArgs e)
@@ -88,8 +80,7 @@ namespace HotelSol.hotelsol.vista
                 Cliente = cliente
             };
 
-            _dbContext.Servicios.Add(servicio);
-            _dbContext.SaveChanges();
+            servicioControl.AgregarServicio(servicio);
 
             MessageBox.Show("Servicio agregado correctamente.");
             LimpiarCampos();
@@ -104,7 +95,7 @@ namespace HotelSol.hotelsol.vista
                 return;
             }
 
-            var servicio = _dbContext.Servicios.Include(s => s.Cliente).FirstOrDefault(s => s.IdServicio == id);
+            var servicio = servicioControl.ObtenerServicioPorId(id);
             if (servicio == null)
             {
                 MessageBox.Show("Servicio no encontrado.");
@@ -118,7 +109,7 @@ namespace HotelSol.hotelsol.vista
             servicio.Precio = precio;
             servicio.Cliente = cliente;
 
-            _dbContext.SaveChanges();
+            servicioControl.ModificarServicio(servicio);
 
             MessageBox.Show("Servicio modificado correctamente.");
             LimpiarCampos();
@@ -140,8 +131,7 @@ namespace HotelSol.hotelsol.vista
                 Cliente = _clienteActual
             };
 
-            _dbContext.Servicios.Add(servicio);
-            _dbContext.SaveChanges();
+            servicioControl.AgregarServicio(servicio);
 
             MessageBox.Show("Servicio agregado correctamente.");
             this.Close();
@@ -150,7 +140,7 @@ namespace HotelSol.hotelsol.vista
         private void btnBuscarCliente_Click(object? sender, EventArgs e)
         {
             string dni = txtBuscarDni.Text.Trim();
-            var cliente = _dbContext.Clientes.FirstOrDefault(c => c.Dni == dni);
+            var cliente = servicioControl.BuscarClientePorDni(dni);
 
             if (cliente != null)
                 cmbClientes.SelectedItem = cliente;
@@ -172,7 +162,7 @@ namespace HotelSol.hotelsol.vista
 
             if (int.TryParse(idValue.ToString(), out int id))
             {
-                var servicio = _dbContext.Servicios.Include(s => s.Cliente).FirstOrDefault(s => s.IdServicio == id);
+                var servicio = servicioControl.ObtenerServicioPorId(id);
                 if (servicio != null)
                 {
                     txtConcepto.Text = servicio.Concepto;

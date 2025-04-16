@@ -1,4 +1,5 @@
 ﻿using HotelSol.hotelsol.modelo;
+using HotelSol.hotelsol.negocio.controlador;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Linq;
@@ -9,11 +10,14 @@ namespace HotelSol.hotelsol.vista
     public partial class ClientesForm : Form
     {
         private readonly HotelSolDbContext _dbContext;
+        private readonly ClienteControl clienteControl;
 
         public ClientesForm(HotelSolDbContext dbContext)
         {
             InitializeComponent();
+
             _dbContext = dbContext ?? throw new ArgumentNullException(nameof(dbContext));
+            clienteControl = new ClienteControl(dbContext);
 
             this.btnAgregar.Click += new System.EventHandler(this.btnAgregar_Click);
             this.dataGridViewClientes.CellClick += dataGridViewClientes_CellClick;
@@ -50,9 +54,8 @@ namespace HotelSol.hotelsol.vista
                 return;
             }
 
-            // Verifica que no exista un cliente con el mismo DNI
-            bool clienteExistente = _dbContext.Clientes.Any(c => c.Dni == dni);
-            if (clienteExistente)
+           
+            if (clienteControl.ExisteDni(dni))
             {
                 MessageBox.Show("Ya existe un cliente con ese DNI.", "Error");
                 return;
@@ -68,8 +71,7 @@ namespace HotelSol.hotelsol.vista
                 TipoCliente = tipoClienteSeleccionado
             };
 
-            _dbContext.Clientes.Add(nuevoCliente);
-            _dbContext.SaveChanges();
+            clienteControl.Agregar(nuevoCliente);
 
             MessageBox.Show("Cliente agregado correctamente", "Éxito");
 
@@ -104,21 +106,8 @@ namespace HotelSol.hotelsol.vista
 
         private void CargarClientes()
         {
-            var clientes = _dbContext.Clientes
-                .Select(c => new
-                {
-                    c.IdCliente,
-                    c.Nombre,
-                    c.Apellido,
-                    c.Dni,
-                    c.Email,
-                    c.Telefono,
-                    Tipo = c.TipoCliente.ToString()
-                })
-                .ToList();
-
             dataGridViewClientes.DataSource = null;
-            dataGridViewClientes.DataSource = clientes;
+            dataGridViewClientes.DataSource = clienteControl.ObtenerTodosParaTabla();
         }
 
         private void dataGridViewClientes_CellClick(object sender, DataGridViewCellEventArgs e)
@@ -157,7 +146,7 @@ namespace HotelSol.hotelsol.vista
                 return;
             }
 
-            var cliente = _dbContext.Clientes.FirstOrDefault(c => c.IdCliente == clienteSeleccionadoId.Value);
+            var cliente = clienteControl.ObtenerPorId(clienteSeleccionadoId.Value);
             if (cliente == null)
             {
                 MessageBox.Show("Cliente no encontrado.");
@@ -184,7 +173,7 @@ namespace HotelSol.hotelsol.vista
             cliente.Telefono = telefono;
             cliente.TipoCliente = tipoClienteSeleccionado;
 
-            _dbContext.SaveChanges();
+            clienteControl.Modificar(cliente);
 
             MessageBox.Show("Cliente modificado correctamente.");
             LimpiarCampos();
@@ -199,7 +188,7 @@ namespace HotelSol.hotelsol.vista
                 return;
             }
 
-            var cliente = _dbContext.Clientes.FirstOrDefault(c => c.IdCliente == clienteSeleccionadoId.Value);
+            var cliente = clienteControl.ObtenerPorId(clienteSeleccionadoId.Value);
             if (cliente == null)
             {
                 MessageBox.Show("Cliente no encontrado.");
@@ -207,7 +196,7 @@ namespace HotelSol.hotelsol.vista
             }
 
             var historialForm = new HistorialForm(_dbContext, cliente);
-            historialForm.ShowDialog(); // o .Show() si preferís sin bloqueo
+            historialForm.ShowDialog();
         }
 
         private void panel1_Paint(object sender, PaintEventArgs e)

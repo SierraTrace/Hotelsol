@@ -20,7 +20,6 @@ namespace HotelSol.hotelsol.vista
             InitializeComponent();
             _dbContext = dbContext ?? throw new ArgumentNullException(nameof(dbContext));
 
-            // Aquí ya puedes usar _dbContext.Empleados, _dbContext.Clientes, etc.
         }
     }
 }

@@ -1,38 +1,33 @@
 ﻿using HotelSol.hotelsol.modelo;
+using Microsoft.EntityFrameworkCore;
+using HotelSol.hotelsol.negocio;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Windows.Forms;
 using HotelSol.hotelsol.vista;
-using Microsoft.EntityFrameworkCore;
+using HotelSol.hotelsol.negocio.controlador;
 
 namespace HotelSol.hotelsol.vista
 {
     public partial class DisponibilidadForm : Form
     {
         private readonly HotelSolDbContext _dbContext;
+        private readonly HabitacionControl habitacionControl;
         private readonly DateTime fechaInicio;
         private readonly DateTime fechaFin;
 
         public DisponibilidadForm(HotelSolDbContext dbContext, DateTime fechaInicio, DateTime fechaFin)
         {
             InitializeComponent();
-            _dbContext = dbContext;
+            _dbContext = dbContext ?? throw new ArgumentNullException(nameof(dbContext));
             this.fechaInicio = fechaInicio;
             this.fechaFin = fechaFin;
 
-            var habitacionesDisponibles = _dbContext.Habitaciones
-                .Include(h => h.TipoHabitacion)
-                .Where(h => !_dbContext.Reservas.Any(r =>
-                    r.HabitacionId == h.Numero &&
-                    r.Estado != EstadoReserva.Cancelada &&
-                    (
-                        (fechaInicio >= r.FechaLlegada && fechaInicio < r.FechaSalida) ||
-                        (fechaFin > r.FechaLlegada && fechaFin <= r.FechaSalida) ||
-                        (fechaInicio <= r.FechaLlegada && fechaFin >= r.FechaSalida)
-                    )))
-                .ToList();
+            habitacionControl = new HabitacionControl(_dbContext);
 
+            var habitacionesDisponibles = habitacionControl.ObtenerDisponibles(fechaInicio, fechaFin);
+        
             CargarHabitaciones(habitacionesDisponibles);
         }
 

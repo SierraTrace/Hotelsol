@@ -1,4 +1,5 @@
 ﻿using HotelSol.hotelsol.modelo;
+using HotelSol.hotelsol.negocio.controlador;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
@@ -10,6 +11,7 @@ namespace HotelSol.hotelsol.vista
     public partial class FacturasForm : Form
     {
         private readonly HotelSolDbContext _dbContext;
+        private readonly FacturaControl facturaControl;
         private Cliente? clienteActual = null;
         private Factura? facturaSeleccionada = null;
 
@@ -17,6 +19,7 @@ namespace HotelSol.hotelsol.vista
         {
             InitializeComponent();
             _dbContext = dbContext ?? throw new ArgumentNullException(nameof(dbContext));
+            facturaControl = new FacturaControl(_dbContext);
 
             btnBuscarCliente.Click += btnBuscarCliente_Click;
             btnCalcular.Click += btnCalcular_Click;
@@ -32,15 +35,7 @@ namespace HotelSol.hotelsol.vista
         {
             cmbClientes.DisplayMember = "NombreCompleto";
             cmbClientes.ValueMember = "IdCliente";
-
-            cmbClientes.DataSource = _dbContext.Clientes
-                .Select(c => new
-                {
-                    c.IdCliente,
-                    NombreCompleto = c.Nombre + " " + c.Apellido,
-                    c.Dni
-                })
-                .ToList();
+            cmbClientes.DataSource = facturaControl.ObtenerClientesParaCombo();
         }
 
         private void btnBuscarCliente_Click(object sender, EventArgs e)
@@ -53,9 +48,7 @@ namespace HotelSol.hotelsol.vista
                 return;
             }
 
-            var cliente = _dbContext.Clientes
-                .Include(c => c.Reservas)
-                .FirstOrDefault(c => c.Dni == dni);
+            var cliente = facturaControl.BuscarClientePorDni(dni);
 
             if (cliente == null)
             {
@@ -74,7 +67,7 @@ namespace HotelSol.hotelsol.vista
         {
             if (cmbClientes.SelectedValue is int idCliente)
             {
-                clienteActual = _dbContext.Clientes.FirstOrDefault(c => c.IdCliente == idCliente);
+                clienteActual = facturaControl.ObtenerClientePorId(idCliente);
 
                 if (clienteActual != null)
                 {
@@ -86,17 +79,9 @@ namespace HotelSol.hotelsol.vista
 
         private void CargarReservasDelCliente(int clienteId)
         {
-            var reservasUsadas = _dbContext.Facturas
-                .SelectMany(f => f.ListaReservas)
-                .Select(r => r.IdReserva)
-                .ToHashSet();
+            var reservas = facturaControl.ObtenerReservasDisponibles(clienteId);
 
-            var reservas = _dbContext.Reservas
-                .Where(r => r.ClienteId == clienteId
-                    && !reservasUsadas.Contains(r.IdReserva)
-                    && r.Estado != EstadoReserva.Cancelada)
-                .ToList();
-
+            chkReservas.DataSource = null;
             chkReservas.DataSource = reservas;
             chkReservas.DisplayMember = nameof(Reserva);
             chkReservas.ValueMember = "IdReserva";
@@ -104,15 +89,9 @@ namespace HotelSol.hotelsol.vista
 
         private void CargarServiciosDelCliente(int clienteId)
         {
-            var serviciosUsados = _dbContext.Facturas
-                .SelectMany(f => f.ListaServicios)
-                .Select(s => s.IdServicio)
-                .ToHashSet();
+            var servicios = facturaControl.ObtenerServiciosDisponibles(clienteId);
 
-            var servicios = _dbContext.Servicios
-                .Where(s => s.ClienteId == clienteId && !serviciosUsados.Contains(s.IdServicio))
-                .ToList();
-
+            chkServicios.DataSource = null;
             chkServicios.DataSource = servicios;
             chkServicios.DisplayMember = nameof(Servicio); 
             chkServicios.ValueMember = "IdServicio";
@@ -129,16 +108,7 @@ namespace HotelSol.hotelsol.vista
             var reservas = chkReservas.CheckedItems.Cast<Reserva>().ToList();
             var servicios = chkServicios.CheckedItems.Cast<Servicio>().ToList();
 
-            var factura = new Factura
-            {
-                Fecha = DateTime.Now,
-                Cliente = clienteActual,
-                ClienteId = clienteActual.IdCliente,
-                ListaReservas = reservas,
-                ListaServicios = servicios
-            };
-
-            factura.CalcularPrecioFactura();
+            var factura = facturaControl.GenerarFactura(clienteActual, reservas, servicios);
 
             lblTotal.Text = $"Importe: {factura.PrecioTotal:C}";
             lblDescuento.Text = $"Descuento: {factura.Descuento:P}";
@@ -156,19 +126,9 @@ namespace HotelSol.hotelsol.vista
             var reservas = chkReservas.CheckedItems.Cast<Reserva>().ToList();
             var servicios = chkServicios.CheckedItems.Cast<Servicio>().ToList();
 
-            var factura = new Factura
-            {
-                Fecha = DateTime.Now,
-                Cliente = clienteActual,
-                ClienteId = clienteActual.IdCliente,
-                ListaReservas = reservas,
-                ListaServicios = servicios
-            };
+            var factura = facturaControl.GenerarFactura(clienteActual, reservas, servicios);
 
-            factura.CalcularPrecioFactura();
-
-            _dbContext.Facturas.Add(factura);
-            _dbContext.SaveChanges();
+            facturaControl.GuardarFactura(factura);
 
             MessageBox.Show("Factura agregada correctamente.");
 
@@ -179,23 +139,8 @@ namespace HotelSol.hotelsol.vista
 
         private void CargarFacturas()
         {
-            var facturas = _dbContext.Facturas
-                .Include(f => f.Cliente)
-                .Include(f => f.ListaReservas)
-                .Include(f => f.ListaServicios)
-                .ToList();
-
-            dgvFacturas.DataSource = facturas
-                .Select(f => new
-                {
-                    f.IdFactura,
-                    Cliente = $"{f.Cliente.Nombre} {f.Cliente.Apellido}",
-                    Fecha = f.Fecha.ToString("dd/MM/yyyy"),
-                    Total = f.PrecioTotal,
-                    Descuento = f.Descuento,
-                    PrecioFinal = f.PrecioFactura
-                })
-                .ToList();
+            dgvFacturas.DataSource = null;
+            dgvFacturas.DataSource = facturaControl.ObtenerFacturasParaTabla();
         }
 
         private void dgvFacturas_CellClick(object sender, DataGridViewCellEventArgs e)
@@ -203,12 +148,8 @@ namespace HotelSol.hotelsol.vista
             if (e.RowIndex >= 0)
             {
                 int idFactura = Convert.ToInt32(dgvFacturas.Rows[e.RowIndex].Cells["IdFactura"].Value);
-                facturaSeleccionada = _dbContext.Facturas
-                    .Include(f => f.Cliente)
-                    .Include(f => f.ListaReservas)
-                    .Include(f => f.ListaServicios)
-                    .FirstOrDefault(f => f.IdFactura == idFactura);
-
+                facturaSeleccionada = facturaControl.ObtenerFacturaPorId(idFactura);
+                
                 if (facturaSeleccionada != null)
                 {
                     clienteActual = facturaSeleccionada.Cliente;
