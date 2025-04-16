@@ -17,7 +17,7 @@ namespace HotelSol.hotelsol.vista
             _empleado = empleado ?? throw new ArgumentNullException(nameof(empleado));
 
             // Configuración del DbContext con cadena de conexión
-            var connectionString = "Server=192.168.1.45;Port=4306;Database=persistentminds;User=DatarUser;Password=7KKdizpDZ81DyI2mn8QC;";
+            var connectionString = "Server=127.0.0.1;Port=4306;Database=persistentminds;Uid=DatarUser;Pwd=7KKdizpDZ81DyI2mn8QC";
             var optionsBuilder = new DbContextOptionsBuilder<HotelSolDbContext>();
             optionsBuilder.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString));
             _dbContext = new HotelSolDbContext(optionsBuilder.Options);
@@ -108,5 +108,4 @@ namespace HotelSol.hotelsol.vista
         }
     }
 }
-
 

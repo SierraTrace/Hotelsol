@@ -57,4 +57,3 @@ namespace HotelSol.hotelsol.vista
         }
     }
 }
-
