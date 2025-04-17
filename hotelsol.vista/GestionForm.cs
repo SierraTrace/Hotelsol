@@ -1,5 +1,8 @@
 ﻿using System;
 using System.Windows.Forms;
+using HotelSol.hotelsol.datos.DAO.factory;
+using HotelSol.hotelsol.datos.DAO.impl;
+using HotelSol.hotelsol.datos.DAO.interfaz;
 using HotelSol.hotelsol.modelo;
 using Microsoft.EntityFrameworkCore;
 
@@ -8,19 +11,28 @@ namespace HotelSol.hotelsol.vista
     public partial class GestionForm : Form
     {
         private readonly Empleado _empleado;
-        private readonly HotelSolDbContext _dbContext;
+        private readonly FactoryDao _factoryDao;
 
+        private readonly EmpleadoDao _empleadoDao;
+        private readonly ServicioDao _servicioDao;
+        private readonly ClienteDao _clienteDao;
+        private readonly HabitacionDao _habitacionDao;
+        private readonly ReservaDao _reservaDao;
+        private readonly FacturaDao _facturaDao;
+     
         public GestionForm(Empleado empleado)
         {
             InitializeComponent();
 
             _empleado = empleado ?? throw new ArgumentNullException(nameof(empleado));
 
-            // Configuración del DbContext con cadena de conexión
-            var connectionString = "Server=127.0.0.1;Port=4306;Database=persistentminds;Uid=DatarUser;Pwd=7KKdizpDZ81DyI2mn8QC";
-            var optionsBuilder = new DbContextOptionsBuilder<HotelSolDbContext>();
-            optionsBuilder.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString));
-            _dbContext = new HotelSolDbContext(optionsBuilder.Options);
+            _factoryDao = new FactoryDao();
+            _empleadoDao = _factoryDao.GetEmpleadoDao();
+            _clienteDao = _factoryDao.GetClienteDao();
+            _habitacionDao = _factoryDao.GetHabitacionDao();
+            _reservaDao = _factoryDao.GetReservaDao();
+            _servicioDao = _factoryDao.GetServicioDao();
+            _facturaDao = _factoryDao.GetFacturaDao();
 
             // Título de la ventana
             this.Text = $"HotelSol {_empleado.Nombre} ({_empleado.Categoria})";
@@ -35,7 +47,7 @@ namespace HotelSol.hotelsol.vista
             this.Controls.SetChildIndex(menuStrip, 0); // Menú va arriba
 
             // Cargar formulario inicial en el panel
-            var reservasForm = new ReservasForm(_dbContext);
+            var reservasForm = new ReservasForm(_reservaDao, _clienteDao);
             AbrirFormularioEnPanel(reservasForm);
         }
 
@@ -68,14 +80,14 @@ namespace HotelSol.hotelsol.vista
             var salirItem = new ToolStripMenuItem("Cerrar sesión");
 
             // Usamos el método AbrirFormularioEnPanel en lugar de MdiParent
-            clientesItem.Click += (s, e) => AbrirFormularioEnPanel(new ClientesForm(_dbContext));
-            reservasItem.Click += (s, e) => AbrirFormularioEnPanel(new ReservasForm(_dbContext));
-            empleadosItem.Click += (s, e) => AbrirFormularioEnPanel(new EmpleadosForm(_dbContext));
-            habitacionesItem.Click += (s, e) => AbrirFormularioEnPanel(new HabitacionesForm(_dbContext));
-            serviciosItem.Click += (s, e) => AbrirFormularioEnPanel(new ServiciosForm(_dbContext));
-            facturasItem.Click += (s, e) => AbrirFormularioEnPanel(new FacturasForm(_dbContext));
-            consultasItem.Click += (s, e) => AbrirFormularioEnPanel(new ConsultasForm(_dbContext));
-            erpItem.Click += (s, e) => AbrirFormularioEnPanel(new ERPForm(_dbContext));
+            clientesItem.Click += (s, e) => AbrirFormularioEnPanel(new ClientesForm(_reservaDao, _clienteDao));
+            reservasItem.Click += (s, e) => AbrirFormularioEnPanel(new ReservasForm(_reservaDao, _clienteDao));
+            empleadosItem.Click += (s, e) => AbrirFormularioEnPanel(new EmpleadosForm(_empleadoDao));
+            habitacionesItem.Click += (s, e) => AbrirFormularioEnPanel(new HabitacionesForm(_habitacionDao));
+            serviciosItem.Click += (s, e) => AbrirFormularioEnPanel(new ServiciosForm(_servicioDao));
+            facturasItem.Click += (s, e) => AbrirFormularioEnPanel(new FacturasForm(_facturaDao));
+            consultasItem.Click += (s, e) => AbrirFormularioEnPanel(new ConsultasForm(_habitacionDao, _reservaDao));
+            erpItem.Click += (s, e) => AbrirFormularioEnPanel(new ERPForm(_factoryDao.GetDbContext()));
 
             salirItem.Click += (s, e) =>
             {

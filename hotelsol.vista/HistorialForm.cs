@@ -10,18 +10,18 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using Microsoft.EntityFrameworkCore;
 using HotelSol.hotelsol.negocio.controlador;
+using HotelSol.hotelsol.datos.DAO.interfaz;
 
 namespace HotelSol.hotelsol.vista
 {
     public partial class HistorialForm : Form
     {
-        private readonly HotelSolDbContext _dbContext;
         private readonly ReservaControl reservaControl;
 
-        public HistorialForm(HotelSolDbContext dbContext, Cliente cliente)
+        public HistorialForm(ReservaDao reservaDao, Cliente cliente)
         {
             InitializeComponent();
-            _dbContext = dbContext;
+            this.reservaControl = new ReservaControl(reservaDao);
 
             CargarHistorial(cliente);
         }

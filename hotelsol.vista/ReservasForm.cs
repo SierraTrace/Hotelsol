@@ -1,4 +1,6 @@
-﻿using HotelSol.hotelsol.modelo;
+﻿using HotelSol.hotelsol.datos.DAO.impl;
+using HotelSol.hotelsol.datos.DAO.interfaz;
+using HotelSol.hotelsol.modelo;
 using HotelSol.hotelsol.negocio.controlador;
 using Microsoft.EntityFrameworkCore;
 using System;
@@ -9,15 +11,16 @@ namespace HotelSol.hotelsol.vista
 {
     public partial class ReservasForm : Form
     {
-        private readonly HotelSolDbContext _dbContext;
         private readonly ReservaControl reservaControl;
         private readonly ClienteControl clienteControl;
 
-        public ReservasForm(HotelSolDbContext dbContext)
+        public ReservasForm(ReservaDao reservaDao, ClienteDao clienteDao)
         {
-            _dbContext = dbContext;
-            reservaControl = new ReservaControl(dbContext);
-            clienteControl = new ClienteControl(dbContext);
+      
+            reservaControl = new ReservaControl(reservaDao);
+
+            clienteControl = new ClienteControl(clienteDao);
+
             InitializeComponent();
 
             this.Load += (s, e) => VerificarNoPresentadosDeDiasAnteriores();
@@ -40,16 +43,10 @@ namespace HotelSol.hotelsol.vista
 
         private void CargarCombos()
         {
-            cmbCliente.DataSource = _dbContext.Clientes.ToList();
+            cmbCliente.DataSource = clienteControl.ObtenerTodos();
             cmbCliente.DisplayMember = "DniYNombre";
             cmbCliente.ValueMember = "IdCliente";
-
-            cmbHabitacion.DataSource = _dbContext.Habitaciones
-                .Include(h => h.TipoHabitacion)
-                .ToList();
-            cmbHabitacion.DisplayMember = "Numero";
-            cmbHabitacion.ValueMember = "Numero";
-
+            cmbHabitacion.DataSource = reservaControl.ObtenerHabitaciones();
             cmbTipoAlojamiento.DataSource = Enum.GetValues(typeof(TipoAlojamiento));
         }
 
@@ -71,17 +68,9 @@ namespace HotelSol.hotelsol.vista
                 FechaLlegada = llegada,
                 FechaSalida = salida,
                 TipoAlojamiento = tipo,
-                Temporada = TemporadaDia.CalcularTemporadaPorDia(llegada, _dbContext),
-                Estado = EstadoReserva.Pendiente,
-                PreciosNoche = _dbContext.PreciosNoche
-                    .Where(p => p.HabitacionId == habitacion.Numero)
-                    .ToList(),
-                PreciosAlojamiento = _dbContext.PrecioAlojamiento
-                     .Where(p => p.TipoHabitacion.Id == habitacion.TipoHabitacion.Id)
-                     .ToList()
             };
 
-            reserva.GuardarPrecios(_dbContext);
+            reservaControl.CompletarDatosDeReserva(reserva);
             reservaControl.AgregarReserva(reserva);
 
             MessageBox.Show("Reserva agregada correctamente.");
@@ -125,23 +114,13 @@ namespace HotelSol.hotelsol.vista
             reserva.FechaLlegada = llegada;
             reserva.FechaSalida = salida;
             reserva.TipoAlojamiento = tipo;
-            reserva.Temporada = TemporadaDia.CalcularTemporadaPorDia(llegada, _dbContext);
 
             if (reserva.Estado == EstadoReserva.No_presentado)
             {
                 reserva.Estado = EstadoReserva.Pendiente;
             }
 
-            reserva.PreciosNoche = _dbContext.PreciosNoche
-                .Where(p => p.HabitacionId == habitacion.Numero)
-                .ToList();
-
-            reserva.PreciosAlojamiento = _dbContext.PrecioAlojamiento
-                .Where(p => p.TipoHabitacion.Id == habitacion.TipoHabitacion.Id)
-                .ToList();
-
-            reserva.GuardarPrecios(_dbContext);
-
+            reservaControl.CompletarDatosDeReserva(reserva);
             reservaControl.ModificarReserva(reserva);
 
             MessageBox.Show("Reserva modificada correctamente.");
@@ -298,41 +277,22 @@ namespace HotelSol.hotelsol.vista
                 return;
             }
 
-            var reserva = _dbContext.Reservas
-                .Include(r => r.Habitacion)
-                .FirstOrDefault(r => r.IdReserva == idReserva);
-
-            if (reserva == null)
-            {
-                MessageBox.Show("Reserva no encontrada.");
-                return;
-            }
-
-            if (reserva.Estado == EstadoReserva.Cancelada)
-            {
-                MessageBox.Show("La reserva ya está cancelada.");
-                return;
-            }
-
-            if (reserva.Estado != EstadoReserva.Pendiente && reserva.Estado != EstadoReserva.No_presentado)
-            {
-                MessageBox.Show("La reserva ya no puedes ser cancelada.");
-                return;
-            }
-
             var confirmacion = MessageBox.Show(
                 "¿Estás seguro de que deseas cancelar esta reserva?",
                 "Confirmar cancelación",
-                MessageBoxButtons.YesNo,
-                MessageBoxIcon.Question
+                 MessageBoxButtons.YesNo,
+                 MessageBoxIcon.Question
             );
 
             if (confirmacion == DialogResult.Yes)
             {
-                reserva.Estado = EstadoReserva.Cancelada;
-                reserva.Habitacion.Estado = EstadoHabitacion.Disponible;
+                string? resultado = reservaControl.CancelarReserva(idReserva);
 
-                _dbContext.SaveChanges();
+                if (resultado != null)
+                {
+                    MessageBox.Show(resultado, "No se pudo cancelar", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
 
                 MessageBox.Show("Reserva cancelada correctamente.");
                 CargarReservas();

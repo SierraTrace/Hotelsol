@@ -9,10 +9,11 @@ namespace HotelSol.hotelsol.datos.DAO.interfaz
 {
     public interface HabitacionDao
     {
-        List<Habitacion> ObtenerTodas();
-        Habitacion ObtenerPorNumero(int numero);
+        List<TipoHabitacion> ObtenerTiposHabitacion();
         void Agregar(Habitacion habitacion);
-        void Modificar(Habitacion habitacion);
-        void Eliminar(int numero);
+        bool ModificarHabitacion(int numero, int tipoId, EstadoHabitacion estado, decimal precioAlta, decimal precioMedia, decimal precioBaja);
+        Habitacion? ObtenerHabitacionConPrecios(int numero);
+        List<object> ObtenerHabitacionesParaTabla();
+        List<Habitacion> ObtenerDisponibles(DateTime fechaInicio, DateTime fechaFin);
     }
 }

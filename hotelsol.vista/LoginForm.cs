@@ -1,4 +1,5 @@
-﻿using HotelSol.hotelsol.modelo;
+﻿using HotelSol.hotelsol.datos.DAO.interfaz;
+using HotelSol.hotelsol.modelo;
 using HotelSol.hotelsol.negocio.controlador;
 using Microsoft.EntityFrameworkCore;
 using System;
@@ -9,13 +10,11 @@ namespace HotelSol.hotelsol.vista
 {
     public partial class LoginForm : Form
     {
-        private readonly HotelSolDbContext _dbContext;
         private readonly LoginControl loginControl;
 
-        public LoginForm(HotelSolDbContext dbContext)
+        public LoginForm(LoginDao loginDao)
         {
-            _dbContext = dbContext ?? throw new ArgumentNullException(nameof(dbContext));
-            loginControl = new LoginControl(dbContext);
+            loginControl = new LoginControl(loginDao);
             InitializeComponent();
         }
 

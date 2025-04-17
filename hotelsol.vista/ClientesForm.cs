@@ -1,23 +1,27 @@
 ﻿using HotelSol.hotelsol.modelo;
 using HotelSol.hotelsol.negocio.controlador;
+using HotelSol.hotelsol.datos.DAO.impl;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Linq;
 using System.Windows.Forms;
+using HotelSol.hotelsol.datos.DAO.interfaz;
 
 namespace HotelSol.hotelsol.vista
 {
     public partial class ClientesForm : Form
     {
-        private readonly HotelSolDbContext _dbContext;
+        private readonly ReservaDao reservaDao;
+        private readonly ReservaControl reservaControl;
         private readonly ClienteControl clienteControl;
 
-        public ClientesForm(HotelSolDbContext dbContext)
+        public ClientesForm(ReservaDao reservaDao, ClienteDao clienteDao)
         {
             InitializeComponent();
 
-            _dbContext = dbContext ?? throw new ArgumentNullException(nameof(dbContext));
-            clienteControl = new ClienteControl(dbContext);
+            this.reservaDao = reservaDao;
+            reservaControl = new ReservaControl(reservaDao);
+            clienteControl = new ClienteControl(clienteDao);
 
             this.btnAgregar.Click += new System.EventHandler(this.btnAgregar_Click);
             this.dataGridViewClientes.CellClick += dataGridViewClientes_CellClick;
@@ -195,8 +199,10 @@ namespace HotelSol.hotelsol.vista
                 return;
             }
 
-            var historialForm = new HistorialForm(_dbContext, cliente);
-            historialForm.ShowDialog();
+            using (var historialForm = new HistorialForm(reservaDao, cliente))
+            {
+                historialForm.ShowDialog();
+            }
         }
 
         private void panel1_Paint(object sender, PaintEventArgs e)

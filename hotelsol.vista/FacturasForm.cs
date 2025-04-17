@@ -1,4 +1,5 @@
-﻿using HotelSol.hotelsol.modelo;
+﻿using HotelSol.hotelsol.datos.DAO.interfaz;
+using HotelSol.hotelsol.modelo;
 using HotelSol.hotelsol.negocio.controlador;
 using Microsoft.EntityFrameworkCore;
 using System;
@@ -10,16 +11,14 @@ namespace HotelSol.hotelsol.vista
 {
     public partial class FacturasForm : Form
     {
-        private readonly HotelSolDbContext _dbContext;
         private readonly FacturaControl facturaControl;
         private Cliente? clienteActual = null;
         private Factura? facturaSeleccionada = null;
 
-        public FacturasForm(HotelSolDbContext dbContext)
+        public FacturasForm(FacturaDao facturaDao)
         {
             InitializeComponent();
-            _dbContext = dbContext ?? throw new ArgumentNullException(nameof(dbContext));
-            facturaControl = new FacturaControl(_dbContext);
+            facturaControl = new FacturaControl(facturaDao);
 
             btnBuscarCliente.Click += btnBuscarCliente_Click;
             btnCalcular.Click += btnCalcular_Click;

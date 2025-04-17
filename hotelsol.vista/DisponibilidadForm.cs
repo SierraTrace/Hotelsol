@@ -7,24 +7,24 @@ using System.Linq;
 using System.Windows.Forms;
 using HotelSol.hotelsol.vista;
 using HotelSol.hotelsol.negocio.controlador;
+using HotelSol.hotelsol.datos.DAO.interfaz;
 
 namespace HotelSol.hotelsol.vista
 {
     public partial class DisponibilidadForm : Form
     {
-        private readonly HotelSolDbContext _dbContext;
         private readonly HabitacionControl habitacionControl;
         private readonly DateTime fechaInicio;
         private readonly DateTime fechaFin;
 
-        public DisponibilidadForm(HotelSolDbContext dbContext, DateTime fechaInicio, DateTime fechaFin)
+        public DisponibilidadForm(HabitacionDao habitacionDao, DateTime fechaInicio, DateTime fechaFin)
         {
             InitializeComponent();
-            _dbContext = dbContext ?? throw new ArgumentNullException(nameof(dbContext));
+    
             this.fechaInicio = fechaInicio;
             this.fechaFin = fechaFin;
 
-            habitacionControl = new HabitacionControl(_dbContext);
+            habitacionControl = new HabitacionControl(habitacionDao);
 
             var habitacionesDisponibles = habitacionControl.ObtenerDisponibles(fechaInicio, fechaFin);
         

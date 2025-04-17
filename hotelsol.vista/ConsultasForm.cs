@@ -1,4 +1,5 @@
-﻿using HotelSol.hotelsol.modelo;
+﻿using HotelSol.hotelsol.datos.DAO.interfaz;
+using HotelSol.hotelsol.modelo;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Linq;
@@ -8,12 +9,14 @@ namespace HotelSol.hotelsol.vista
 {
     public partial class ConsultasForm : Form
     {
-        private readonly HotelSolDbContext _dbContext;
-
-        public ConsultasForm(HotelSolDbContext dbContext)
+        private readonly ReservaDao _reservaDao;
+        private readonly HabitacionDao _habitacionDao;
+    
+        public ConsultasForm(HabitacionDao habitacionDao, ReservaDao reservaDao)
         {
             InitializeComponent();
-            _dbContext = dbContext;
+            _habitacionDao = habitacionDao;
+            _reservaDao = reservaDao;
 
             btnDisponibilidad.Click += btnDisponibilidad_Click;
             btnClientesReserva.Click += btnClientesReserva_Click;
@@ -31,14 +34,14 @@ namespace HotelSol.hotelsol.vista
             }
 
             // Mostrar DisponibilidadForm pasando fechas
-            var disponibilidadForm = new DisponibilidadForm(_dbContext, fechaInicio, fechaFin);
+            var disponibilidadForm = new DisponibilidadForm(_habitacionDao, fechaInicio, fechaFin);
             disponibilidadForm.ShowDialog();
         }
 
         private void btnClientesReserva_Click(object sender, EventArgs e)
         {
             var fechaSeleccionada = dateClientesReserva.Value.Date;
-            var form = new ClientesReservaForm(_dbContext, fechaSeleccionada);
+            var form = new ClientesReservaForm(_reservaDao, fechaSeleccionada);
             form.ShowDialog();
         }
     }

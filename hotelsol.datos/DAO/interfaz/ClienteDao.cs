@@ -9,11 +9,12 @@ namespace HotelSol.hotelsol.datos.DAO.interfaz
 {
     public interface ClienteDao
     {
-        List<Cliente> ObtenerTodos();
-        Cliente ObtenerPorId(int id);
-        Cliente BuscarPorDni(string dni);
+        bool ExisteDni(string dni);
         void Agregar(Cliente cliente);
         void Modificar(Cliente cliente);
-        void Eliminar(int id);
+        Cliente? ObtenerPorId(int id);
+        Cliente? BuscarPorDni(string dni);
+        List<object> ObtenerTodosParaTabla();
+        List<Cliente> ObtenerTodos();
     }
 }

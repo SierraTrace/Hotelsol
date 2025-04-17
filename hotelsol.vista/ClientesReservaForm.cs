@@ -1,4 +1,5 @@
-﻿using HotelSol.hotelsol.modelo;
+﻿using HotelSol.hotelsol.datos.DAO.interfaz;
+using HotelSol.hotelsol.modelo;
 using HotelSol.hotelsol.negocio.controlador;
 using Microsoft.EntityFrameworkCore;
 using System;
@@ -9,14 +10,13 @@ namespace HotelSol.hotelsol.vista
 {
     public partial class ClientesReservaForm : Form
     {
-        private readonly HotelSolDbContext _dbContext;
         private readonly ReservaControl reservaControl;
 
-        public ClientesReservaForm(HotelSolDbContext dbContext, DateTime fechaSeleccionada)
+        public ClientesReservaForm(ReservaDao reservaDao, DateTime fechaSeleccionada)
         {
             InitializeComponent();
-            _dbContext = dbContext ?? throw new ArgumentNullException(nameof(dbContext));
-            reservaControl = new ReservaControl(_dbContext);
+
+            reservaControl = new ReservaControl(reservaDao);
 
             CargarClientesConReserva(fechaSeleccionada);
         }

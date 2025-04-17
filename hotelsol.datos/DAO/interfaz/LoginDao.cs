@@ -7,11 +7,8 @@ using System.Threading.Tasks;
 
 namespace HotelSol.hotelsol.datos.DAO.interfaz
 {
-    public interface EmpleadoDao
+    public interface LoginDao
     {
-        List<object> ObtenerTodosParaTabla();
-        bool ExisteUserName(string userName);
-        void Agregar(Empleado empleado);
-     
+        Empleado? VerificarCredenciales(string usuario, string contraseña);
     }
 }

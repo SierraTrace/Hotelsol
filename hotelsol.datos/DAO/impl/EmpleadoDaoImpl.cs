@@ -10,48 +10,37 @@ namespace HotelSol.hotelsol.datos.DAO.impl
 {
     public class EmpleadoDaoImpl : EmpleadoDao
     {
-        private readonly HotelSolDbContext _context;
+        private readonly HotelSolDbContext _dbContext;
 
-        public EmpleadoDaoImpl(HotelSolDbContext context)
+        public EmpleadoDaoImpl(HotelSolDbContext dbContext)
         {
-            _context = context;
+            dbContext = dbContext;
         }
 
-        public List<Empleado> ObtenerTodos()
+        public bool ExisteUserName(string userName)
         {
-            return _context.Empleados.ToList();
+            return _dbContext.Empleados.Any(e => e.UserName == userName);
         }
 
-        public Empleado ObtenerPorId(int id)
+        public List<object> ObtenerTodosParaTabla()
         {
-            return _context.Empleados.FirstOrDefault(e => e.IdEmpleado == id);
-        }
-
-        public Empleado BuscarPorUserName(string userName)
-        {
-            return _context.Empleados.FirstOrDefault(e => e.UserName == userName);
+            return _dbContext.Empleados
+                .Select(e => new
+                {
+                    e.IdEmpleado,
+                    e.Nombre,
+                    e.Apellido,
+                    e.UserName,
+                    Categoria = e.Categoria.ToString()
+                })
+                .Cast<object>()
+                .ToList();
         }
 
         public void Agregar(Empleado empleado)
         {
-            _context.Empleados.Add(empleado);
-            _context.SaveChanges();
-        }
-
-        public void Modificar(Empleado empleado)
-        {
-            _context.Empleados.Update(empleado);
-            _context.SaveChanges();
-        }
-
-        public void Eliminar(int id)
-        {
-            var empleado = _context.Empleados.Find(id);
-            if (empleado != null)
-            {
-                _context.Empleados.Remove(empleado);
-                _context.SaveChanges();
-            }
+            _dbContext.Empleados.Add(empleado);
+            _dbContext.SaveChanges();
         }
     }
 }

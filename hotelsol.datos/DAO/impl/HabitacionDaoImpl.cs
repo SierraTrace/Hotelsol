@@ -11,51 +11,95 @@ namespace HotelSol.hotelsol.datos.DAO.impl
 {
     public class HabitacionDaoImpl :HabitacionDao
     {
-        private readonly HotelSolDbContext _context;
+        private readonly HotelSolDbContext _dbContext;
 
-        public HabitacionDaoImpl(HotelSolDbContext context)
+        public HabitacionDaoImpl(HotelSolDbContext dbContext)
         {
-            _context = context;
+            _dbContext = dbContext;
         }
 
-        public List<Habitacion> ObtenerTodas()
+        public List<TipoHabitacion> ObtenerTiposHabitacion()
         {
-            return _context.Habitaciones
-                .Include(h => h.TipoHabitacion)
-                .Include(h => h.PreciosPorTemporada)
-                .Include(h => h.Reservas)
-                .ToList();
-        }
-
-        public Habitacion ObtenerPorNumero(int numero)
-        {
-            return _context.Habitaciones
-                .Include(h => h.TipoHabitacion)
-                .Include(h => h.PreciosPorTemporada)
-                .Include(h => h.Reservas)
-                .FirstOrDefault(h => h.Numero == numero);
+            return _dbContext.TiposHabitacion.ToList();
         }
 
         public void Agregar(Habitacion habitacion)
         {
-            _context.Habitaciones.Add(habitacion);
-            _context.SaveChanges();
+            _dbContext.Habitaciones.Add(habitacion);
+            _dbContext.SaveChanges();
         }
 
-        public void Modificar(Habitacion habitacion)
+        public bool ModificarHabitacion(int numero, int tipoId, EstadoHabitacion estado, decimal precioAlta, decimal precioMedia, decimal precioBaja)
         {
-            _context.Habitaciones.Update(habitacion);
-            _context.SaveChanges();
-        }
+            var habitacion = _dbContext.Habitaciones
+                .Include(h => h.PreciosPorTemporada)
+                .FirstOrDefault(h => h.Numero == numero);
 
-        public void Eliminar(int numero)
-        {
-            var habitacion = _context.Habitaciones.Find(numero);
-            if (habitacion != null)
+            if (habitacion == null)
+                return false;
+
+            habitacion.TipoHabitacionId = tipoId;
+            habitacion.Estado = estado;
+
+            foreach (var precio in habitacion.PreciosPorTemporada)
             {
-                _context.Habitaciones.Remove(habitacion);
-                _context.SaveChanges();
+                switch (precio.Temporada)
+                {
+                    case Temporada.Alta:
+                        precio.Precio = precioAlta;
+                        break;
+                    case Temporada.Media:
+                        precio.Precio = precioMedia;
+                        break;
+                    case Temporada.Baja:
+                        precio.Precio = precioBaja;
+                        break;
+                }
             }
+
+            _dbContext.SaveChanges();
+            return true;
+        }
+
+        public Habitacion? ObtenerHabitacionConPrecios(int numero)
+        {
+            return _dbContext.Habitaciones
+                .Include(h => h.PreciosPorTemporada)
+                .FirstOrDefault(h => h.Numero == numero);
+        }
+
+        public List<object> ObtenerHabitacionesParaTabla()
+        {
+            return _dbContext.Habitaciones
+                .Include(h => h.TipoHabitacion)
+                .Include(h => h.PreciosPorTemporada)
+                .ToList()
+                .Select(h => new
+                {
+                    h.Numero,
+                    Tipo = h.TipoHabitacion.Nombre,
+                    Estado = h.Estado.ToString(),
+                    PrecioAlta = h.PreciosPorTemporada.FirstOrDefault(p => p.Temporada == Temporada.Alta)?.Precio ?? 0,
+                    PrecioMedia = h.PreciosPorTemporada.FirstOrDefault(p => p.Temporada == Temporada.Media)?.Precio ?? 0,
+                    PrecioBaja = h.PreciosPorTemporada.FirstOrDefault(p => p.Temporada == Temporada.Baja)?.Precio ?? 0
+                })
+                .Cast<object>()
+                .ToList();
+        }
+
+        public List<Habitacion> ObtenerDisponibles(DateTime fechaInicio, DateTime fechaFin)
+        {
+            return _dbContext.Habitaciones
+                .Include(h => h.TipoHabitacion)
+                .Where(h => !_dbContext.Reservas.Any(r =>
+                    r.HabitacionId == h.Numero &&
+                    r.Estado != EstadoReserva.Cancelada &&
+                    (
+                        (fechaInicio >= r.FechaLlegada && fechaInicio < r.FechaSalida) ||
+                        (fechaFin > r.FechaLlegada && fechaFin <= r.FechaSalida) ||
+                        (fechaInicio <= r.FechaLlegada && fechaFin >= r.FechaSalida)
+                    )))
+                .ToList();
         }
     }
 }

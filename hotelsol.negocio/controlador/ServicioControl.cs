@@ -1,4 +1,5 @@
-﻿using HotelSol.hotelsol.modelo;
+﻿using HotelSol.hotelsol.datos.DAO.interfaz;
+using HotelSol.hotelsol.modelo;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
@@ -10,55 +11,18 @@ namespace HotelSol.hotelsol.negocio.controlador
 {
     public class ServicioControl
     {
-        private readonly HotelSolDbContext _dbContext;
+        private readonly ServicioDao _servicioDao;
 
-        public ServicioControl(HotelSolDbContext dbContext)
+        public ServicioControl(ServicioDao servicioDao)
         {
-            _dbContext = dbContext;
+            _servicioDao = servicioDao;
         }
 
-        public List<Cliente> ObtenerClientes()
-        {
-            return _dbContext.Clientes.ToList();
-        }
-
-        public Cliente? BuscarClientePorDni(string dni)
-        {
-            return _dbContext.Clientes.FirstOrDefault(c => c.Dni == dni);
-        }
-
-        public List<object> ObtenerServiciosParaTabla()
-        {
-            return _dbContext.Servicios
-                .Include(s => s.Cliente)
-                .ToList()
-                .Select(s => new
-                {
-                    s.IdServicio,
-                    Cliente = s.Cliente.DniYNombre,
-                    s.Concepto,
-                    s.Precio
-                })
-                .Cast<object>()
-                .ToList();
-        }
-
-        public Servicio? ObtenerServicioPorId(int id)
-        {
-            return _dbContext.Servicios
-                .Include(s => s.Cliente)
-                .FirstOrDefault(s => s.IdServicio == id);
-        }
-
-        public void AgregarServicio(Servicio servicio)
-        {
-            _dbContext.Servicios.Add(servicio);
-            _dbContext.SaveChanges();
-        }
-
-        public void ModificarServicio(Servicio servicio)
-        {
-            _dbContext.SaveChanges();
-        }
+        public List<Cliente> ObtenerClientes() => _servicioDao.ObtenerClientes();
+        public Cliente? BuscarClientePorDni(string dni) => _servicioDao.BuscarClientePorDni(dni);
+        public List<object> ObtenerServiciosParaTabla() => _servicioDao.ObtenerServiciosParaTabla();
+        public Servicio? ObtenerServicioPorId(int id) => _servicioDao.ObtenerServicioPorId(id);
+        public void AgregarServicio(Servicio servicio) => _servicioDao.AgregarServicio(servicio);
+        public void ModificarServicio(Servicio servicio) => _servicioDao.ModificarServicio(servicio);
     }
 }

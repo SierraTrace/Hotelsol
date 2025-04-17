@@ -1,4 +1,5 @@
-﻿using HotelSol.hotelsol.modelo;
+﻿using HotelSol.hotelsol.datos.DAO.interfaz;
+using HotelSol.hotelsol.modelo;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -9,37 +10,15 @@ namespace HotelSol.hotelsol.negocio.controlador
 {
     public class EmpleadoControl
     {
-        private readonly HotelSolDbContext _dbContext;
+        private readonly EmpleadoDao _empleadoDao;
 
-        public EmpleadoControl(HotelSolDbContext dbContext)
+        public EmpleadoControl(EmpleadoDao empleadoDao)
         {
-            _dbContext = dbContext;
+            _empleadoDao = empleadoDao;
         }
 
-        public bool ExisteUserName(string userName)
-        {
-            return _dbContext.Empleados.Any(e => e.UserName == userName);
-        }
-
-        public void Agregar(Empleado empleado)
-        {
-            _dbContext.Empleados.Add(empleado);
-            _dbContext.SaveChanges();
-        }
-
-        public List<object> ObtenerTodosParaTabla()
-        {
-            return _dbContext.Empleados
-                .Select(e => new
-                {
-                    e.IdEmpleado,
-                    e.Nombre,
-                    e.Apellido,
-                    e.UserName,
-                    Categoria = e.Categoria.ToString()
-                })
-                .Cast<object>()
-                .ToList();
-        }
+        public bool ExisteUserName(string userName) => _empleadoDao.ExisteUserName(userName);
+        public void Agregar(Empleado empleado) => _empleadoDao.Agregar(empleado);
+        public List<object> ObtenerTodosParaTabla() => _empleadoDao.ObtenerTodosParaTabla();
     }
 }

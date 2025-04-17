@@ -2,6 +2,8 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.EntityFrameworkCore;
 using HotelSol.hotelsol.modelo;
 using HotelSol.hotelsol.vista;
+using HotelSol.hotelsol.datos.DAO.impl;
+using HotelSol.hotelsol.datos.DAO.interfaz;
 
 namespace HotelSolLimpio.hotelsol
 {
@@ -35,8 +37,10 @@ namespace HotelSolLimpio.hotelsol
             // Crear instancia de DbContext
             using var dbContext = new HotelSolDbContext(optionsBuilder.Options);
 
+            LoginDao loginDao = new LoginDaoImpl(dbContext);
+
             // Iniciar la aplicación con FormLogin
-            Application.Run(new LoginForm(dbContext));
+            Application.Run(new LoginForm(loginDao));
         }
     }
 }

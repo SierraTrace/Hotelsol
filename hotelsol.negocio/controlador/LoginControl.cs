@@ -1,4 +1,5 @@
-﻿using HotelSol.hotelsol.modelo;
+﻿using HotelSol.hotelsol.datos.DAO.interfaz;
+using HotelSol.hotelsol.modelo;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -9,17 +10,17 @@ namespace HotelSol.hotelsol.negocio.controlador
 {
     public class LoginControl
     {
-        private readonly HotelSolDbContext _dbContext;
+        private readonly LoginDao _loginDao;
 
-        public LoginControl(HotelSolDbContext dbContext)
+        public LoginControl(LoginDao loginDao)
         {
-            _dbContext = dbContext;
+            _loginDao = loginDao;
         }
 
         public Empleado? VerificarCredenciales(string usuario, string contraseña)
         {
-            return _dbContext.Empleados
-                .FirstOrDefault(e => e.UserName == usuario && e.Contraseña == contraseña);
+            return _loginDao.VerificarCredenciales(usuario, contraseña);
+
         }
     }
 }

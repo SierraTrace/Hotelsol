@@ -1,27 +1,25 @@
-﻿using HotelSol.hotelsol.modelo;
-using System;
+﻿using System;
 using HotelSol.hotelsol.modelo;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Linq;
 using System.Windows.Forms;
 using HotelSol.hotelsol.negocio.controlador;
+using HotelSol.hotelsol.datos.DAO.interfaz;
 
 namespace HotelSol.hotelsol.vista
 {
     public partial class ServiciosForm : Form
     {
-        private readonly HotelSolDbContext _dbContext;
         private readonly ServicioControl servicioControl;
         private readonly Cliente? _clienteActual;
 
-        public ServiciosForm(HotelSolDbContext dbContext)
+        public ServiciosForm(ServicioDao servicioDao)
         {
-            _dbContext = dbContext;
-            servicioControl = new ServicioControl(dbContext);
             InitializeComponent();
-            
-
+           
+            servicioControl = new ServicioControl(servicioDao);
+           
             btnAgregar.Click += btnAgregar_Click;
             btnModificar.Click += btnModificar_Click;
             dataGridServicios.CellClick += dataGridServicios_CellClick;
@@ -31,7 +29,7 @@ namespace HotelSol.hotelsol.vista
             CargarServicios();
         }
 
-        public ServiciosForm(HotelSolDbContext dbContext, Cliente cliente) : this(dbContext)
+        public ServiciosForm(ServicioDao servicioDao, Cliente cliente) : this(servicioDao)
         {
             _clienteActual = cliente;
             cmbClientes.SelectedItem = cliente;
@@ -55,8 +53,6 @@ namespace HotelSol.hotelsol.vista
 
         private void CargarClientes()
         {
-            var clientes = _dbContext.Clientes.ToList();
-
             cmbClientes.DataSource = servicioControl.ObtenerClientes();
             cmbClientes.DisplayMember = "DniYNombre"; 
             cmbClientes.ValueMember = "IdCliente";

@@ -1,4 +1,5 @@
-﻿using HotelSol.hotelsol.modelo;
+﻿using HotelSol.hotelsol.datos.DAO.interfaz;
+using HotelSol.hotelsol.modelo;
 using HotelSol.hotelsol.negocio.controlador;
 using Microsoft.EntityFrameworkCore;
 using System;
@@ -9,20 +10,18 @@ namespace HotelSol.hotelsol.vista
 {
     public partial class HabitacionesForm : Form
     {
-        private readonly HotelSolDbContext _dbContext;
         private readonly HabitacionControl habitacionControl;
 
-        public HabitacionesForm(HotelSolDbContext dbContext)
+        public HabitacionesForm(HabitacionDao habitacionDao)
         {
             InitializeComponent();
-            _dbContext = dbContext ?? throw new ArgumentNullException(nameof(dbContext));
-            habitacionControl = new HabitacionControl(_dbContext);
+            habitacionControl = new HabitacionControl(habitacionDao);
 
             this.btnAgregar.Click += new EventHandler(this.btnAgregar_Click);
             this.btnModificar.Click += new EventHandler(this.btnModificar_Click);
             this.dataGridHabitaciones.CellClick += new DataGridViewCellEventHandler(this.dataGridHabitaciones_CellContentClick);
 
-            cmbTipoHabitacion.DataSource = _dbContext.TiposHabitacion.ToList();
+            cmbTipoHabitacion.DataSource = habitacionControl.ObtenerTiposHabitacion();
             cmbTipoHabitacion.DisplayMember = "Nombre";
             cmbTipoHabitacion.ValueMember = "Id";
             cmbTipoHabitacion.SelectedIndex = -1;

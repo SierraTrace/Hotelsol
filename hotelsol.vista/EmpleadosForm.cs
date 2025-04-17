@@ -1,4 +1,6 @@
-﻿using HotelSol.hotelsol.modelo;
+﻿using HotelSol.hotelsol.datos.DAO.impl;
+using HotelSol.hotelsol.datos.DAO.interfaz;
+using HotelSol.hotelsol.modelo;
 using HotelSol.hotelsol.negocio.controlador;
 using System;
 using System.Linq;
@@ -8,15 +10,14 @@ namespace HotelSol.hotelsol.vista
 {
     public partial class EmpleadosForm : Form
     {
-        private readonly HotelSolDbContext _dbContext;
+
         private readonly EmpleadoControl empleadoControl;
         private int? empleadoSeleccionadoId = null;
 
-        public EmpleadosForm(HotelSolDbContext dbContext)
+        public EmpleadosForm(EmpleadoDao empleadoDao)
         {
             InitializeComponent();
-            _dbContext = dbContext ?? throw new ArgumentNullException(nameof(dbContext));
-            empleadoControl = new EmpleadoControl(dbContext);
+            empleadoControl = new EmpleadoControl(empleadoDao);
 
             this.btnAgregar.Click += new EventHandler(this.btnAgregar_Click);
 
@@ -25,8 +26,6 @@ namespace HotelSol.hotelsol.vista
 
             CargarEmpleados();
         }
-
-
 
         private void btnAgregar_Click(object sender, EventArgs e)
         {
