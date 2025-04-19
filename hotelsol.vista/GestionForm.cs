@@ -49,6 +49,7 @@ namespace HotelSol.hotelsol.vista
             // Cargar formulario inicial en el panel
             var reservasForm = new ReservasForm(_reservaDao, _clienteDao);
             AbrirFormularioEnPanel(reservasForm);
+
         }
 
         private void AbrirFormularioEnPanel(Form formulario)
@@ -92,7 +93,7 @@ namespace HotelSol.hotelsol.vista
             salirItem.Click += (s, e) =>
             {
                 this.Close();
-                Application.Restart();
+               // Application.Restart();
             };
 
             // Añadir según rol
