@@ -16,7 +16,7 @@ namespace HotelSol.hotelsol.datos.DAO.factory
 
         public FactoryDao()
         {
-            var connectionString = "Server=127.0.0.1;Port=4306;Database=persistentminds;Uid=DatarUser;Pwd=7KKdizpDZ81DyI2mn8QC";
+            var connectionString = "Server=127.0.0.1;Port=3306;Database=hs;Uid=root;Pwd=0000";
             var options = new DbContextOptionsBuilder<HotelSolDbContext>()
                 .UseMySql(connectionString, ServerVersion.AutoDetect(connectionString))
                 .Options;
